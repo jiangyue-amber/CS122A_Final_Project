@@ -1,0 +1,139 @@
+﻿NLquery_id,Nlquery,LLM_model_name,prompt,LLM_returned_SQL_id,LLM_returned_SQL_query,SQL_correct,Error_name1,
+1,"For each Internet Service(sid), find the most frequently used version among all Base Models that utilize it. If multiple versions have the same highest frequency, you may return any one of them",Gemini Flash 2.5,"Before we start, get familiar with all the schema:[all table schema] Translate this natural language query into SQL format: [NL query]",1,"WITH VersionFrequencies AS (
+    -- Calculate the frequency of each version for every Internet Service (sid)
+    SELECT
+        sid,
+        version,
+        COUNT(*) AS frequency,
+        -- Assign a rank (row number) based on frequency, with the highest frequency getting rn = 1
+        -- The PARTITION BY sid ensures ranking restarts for each service.
+        ROW_NUMBER() OVER (PARTITION BY sid ORDER BY COUNT(*) DESC) AS rn
+    FROM
+        ModelServices
+    GROUP BY
+        sid, version
+)
+-- Select the Internet Service ID and the version with the highest frequency (rn = 1)
+SELECT
+    sid,
+    version
+FROM
+    VersionFrequencies
+WHERE
+    rn = 1;",Correct,,
+1,"For each Internet Service(sid), find the most frequently used version among all Base Models that utilize it. If multiple versions have the same highest frequency, you may return any one of them",Gemini Flash 2.5,Achieve this NL2SQL task from the given natural language query and table schema:[only relevant table schema] [NL query],2,"SELECT
+  T1.sid,
+  T1.version
+FROM ModelServices AS T1
+INNER JOIN InternetService AS T2
+  ON T1.sid = T2.sid
+GROUP BY
+  T1.sid
+ORDER BY
+  COUNT(T1.version) DESC
+LIMIT 1;",Incorrect,"Syntax error: The column T1.version is included in the SELECT list but is not an aggregate function and is missing from the GROUP BY clause, violating the ONLY_FULL_GROUP_BY SQL mode.",
+1,"For each Internet Service(sid), find the most frequently used version among all Base Models that utilize it. If multiple versions have the same highest frequency, you may return any one of them",Gemini Flash 2.5,Translate this natural language query into SQL format: [NL query]. Output something that looks like this: [Sample output],3,"SELECT
+  sid,
+  version,
+  usage_count
+FROM (
+  -- Step 1: Calculate the frequency (usage_count) for each (sid, version) combination
+  SELECT
+    sid,
+    version,
+    COUNT(*) AS usage_count,
+    -- Step 2: Rank the versions within each sid group based on usage_count.
+    -- ROW_NUMBER() is non-deterministic on ties, which satisfies the requirement
+    -- to return *any one* of them if multiple versions have the same highest frequency.
+    ROW_NUMBER() OVER (PARTITION BY sid ORDER BY COUNT(*) DESC) AS rn
+  FROM
+    BaseModel -- Assuming a table named 'BaseModels' contains the sid and version columns
+  GROUP BY
+    sid,
+    version
+) AS RankedUsage
+WHERE
+  rn = 1;",Incorrect,Field name error: Error Code: BaseModel doesn't have field sid,
+2,Find all the Internet Service(sid) that are utilized by every Base Model built by the agent creator user_iuwrh.,Gemini Flash 2.5,"Before we start, get familiar with all the schema:[all table schema] Translate this natural language query into SQL format: [NL query]",4,"SELECT
+    MS.sid
+FROM
+    ModelServices AS MS
+    -- Step 1: Join with BaseModel to filter for models created by the specific user
+    JOIN BaseModel AS BM ON MS.bmid = BM.bmid
+    -- Step 2: Join with AgentCreator and User to find the creator's uid
+    JOIN AgentCreator AS AC ON BM.creator_uid = AC.uid
+    JOIN User AS U ON AC.uid = U.uid
+WHERE
+    U.username = 'user_iuwrh'
+GROUP BY
+    MS.sid
+HAVING
+    -- Step 3: Check if the count of distinct models (created by 'user_iuwrh')
+    -- that use the service (MS.sid) is equal to the total number of
+    -- distinct models created by 'user_iuwrh'.
+    COUNT(DISTINCT BM.bmid) = (
+        SELECT
+            COUNT(bmid)
+        FROM
+            BaseModel AS InnerBM
+            JOIN AgentCreator AS InnerAC ON InnerBM.creator_uid = InnerAC.uid
+            JOIN User AS InnerU ON InnerAC.uid = InnerU.uid
+        WHERE
+            InnerU.username = 'user_iuwrh'
+    );",Incorrect,Ground truth could be wrong. user_iuwrh is associated with base model 18 which doesn't use any internet services so the answer would be the empty set. ,
+2,Find all the Internet Service(sid) that are utilized by every Base Model built by the agent creator user_iuwrh.,Gemini Flash 2.5,Achieve this NL2SQL task from the given natural language query and table schema:[only relevant table schema] [NL query],5,"SELECT T1.sid
+FROM InternetService AS T1 JOIN ModelServices AS T2 ON T1.sid = T2.sid JOIN BaseModel AS T3 ON T2.bmid = T3.bmid JOIN AgentCreator AS T4 ON T3.creator_uid = T4.uid JOIN User AS T5 ON T4.uid = T5.uid
+WHERE T5.username = 'user_iuwrh'
+GROUP BY T1.sid
+HAVING COUNT(DISTINCT T3.bmid) = (
+  SELECT COUNT(bmid)
+  FROM BaseModel AS T3 JOIN AgentCreator AS T4 ON T3.creator_uid = T4.uid JOIN User AS T5 ON T4.uid = T5.uid
+  WHERE T5.username = 'user_iuwrh'
+);",Incorrect,Ground truth could be wrong. user_iuwrh is associated with base model 18 which doesn't use any internet services so the answer would be the empty set. ,
+2,Find all the Internet Service(sid) that are utilized by every Base Model built by the agent creator user_iuwrh.,Gemini Flash 2.5,Translate this natural language query into SQL format: [NL query]. Output something that looks like this: [Sample output],6,"SELECT T1.sid
+FROM InternetService AS T1
+WHERE NOT EXISTS (
+    -- Subquery 1: Find a BaseModel (B2) created by 'user_iuwrh'
+    -- for which there is NO corresponding ModelService record (T2)
+    -- that links it to the current InternetService (T1.sid).
+    SELECT T3.bmid
+    FROM BaseModel AS T3
+    JOIN AgentCreator AS T4 ON T3.creator_uid = T4.uid
+    JOIN User AS T5 ON T4.uid = T5.uid
+    WHERE T5.username = 'user_iuwrh' -- Filter for the specific creator
+    AND NOT EXISTS (
+        -- Subquery 2: Check if a ModelServices record exists
+        SELECT 1
+        FROM ModelServices AS T2
+        WHERE T2.bmid = T3.bmid -- for the BaseModel B2
+        AND T2.sid = T1.sid -- and for the current InternetService T1
+    )
+);",Incorrect,Ground truth could be wrong. user_iuwrh is associated with base model 18 which doesn't use any internet services so the answer would be the empty set. ,
+3,Find all customized models(mid) that do not appear in model configurations. ,Gemini Flash 2.5,"Before we start, get familiar with all the schema:[all table schema] Translate this natural language query into SQL format: [NL query]",7,"SELECT
+    CM.bmid,
+    CM.mid
+FROM
+    CustomizedModel AS CM
+LEFT JOIN
+    ModelConfigurations AS MC
+    ON CM.bmid = MC.bmid AND CM.mid = MC.mid
+WHERE
+    MC.cid IS NULL;",Correct,Extra column bmid is returned,
+3,Find all customized models(mid) that do not appear in model configurations. ,Gemini Flash 2.5,Achieve this NL2SQL task from the given natural language query and table schema:[only relevant table schema] [NL query],8,"SELECT
+  T1.mid
+FROM CustomizedModel AS T1
+LEFT JOIN ModelConfigurations AS T2
+  ON T1.bmid = T2.bmid AND T1.mid = T2.mid
+WHERE
+  T2.cid IS NULL;",Correct,,
+3,Find all customized models(mid) that do not appear in model configurations. ,Gemini Flash 2.5,Translate this natural language query into SQL format: [NL query]. Output something that looks like this: [Sample output],9,"SELECT
+    mid
+FROM
+    CustomizedModel
+WHERE
+    (bmid, mid) NOT IN (
+        SELECT
+            bmid, mid
+        FROM
+            ModelConfigurations
+    );",Correct,,
