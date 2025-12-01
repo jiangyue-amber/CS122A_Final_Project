@@ -1,6 +1,7 @@
 import mysql.connector
 import sys
 
+
 def main():
     mydb = mysql.connector.connect(
     host="localhost",
