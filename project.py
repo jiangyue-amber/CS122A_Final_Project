@@ -5,14 +5,12 @@ import csv
 import os
 from datetime import datetime
 
-
 DB_CONFIG = {
      'host': 'localhost',
      'user': 'test',
      'password': 'password',
      'database': 'cs122a'
 }
-
 
 def get_db_connection():
     try:
@@ -347,10 +345,9 @@ def topNDurationConfig(uid, N):
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT client_uid, c.cid, labels, content, duration
-            FROM ModelConfigurations mc
-            JOIN Configuration c ON mc.cid=c.cid
-            WHERE c.client_uid=%s
+            SELECT uid, cid, label, content, duration
+            FROM ModelConfiguration
+            WHERE uid = %s
             ORDER BY duration DESC
             LIMIT %s
         """, (uid, N))
