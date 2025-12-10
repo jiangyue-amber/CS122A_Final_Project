@@ -203,6 +203,7 @@ def import_data(folder_name):
             cursor.close()
             conn.close()
 
+
 # ------------------ Function 2: Insert AgentClient ------------------
 def insertAgentClient(uid, username, email, interests, cardholder, expire, cardno, cvv, zip_code):
     conn = get_db_connection()
