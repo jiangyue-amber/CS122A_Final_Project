@@ -344,21 +344,33 @@ def topNDurationConfig(uid, N):
         return
     try:
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT uid, cid, label, content, duration
-            FROM ModelConfiguration
-            WHERE uid = %s
-            ORDER BY duration DESC
+
+        query = """
+            SELECT c.client_uid, c.cid, c.labels, c.content, mc.max_duration
+            FROM Configuration c
+            JOIN (
+                SELECT cid, MAX(duration) AS max_duration
+                FROM ModelConfigurations
+                GROUP BY cid
+            ) mc ON c.cid = mc.cid
+            WHERE c.client_uid = %s
+            ORDER BY mc.max_duration DESC
             LIMIT %s
-        """, (uid, N))
-        for row in cursor.fetchall():
-            print(f"{row[0]},{row[1]},{row[2]},{row[3]},{row[4]}")
+        """
+
+        cursor.execute(query, (uid, N))
+
+        rows = cursor.fetchall()
+        for r in rows:
+            print(f"{r[0]},{r[1]},{r[2]},{r[3]},{r[4]}")
+
     except Error as e:
-        print(f"Fail: {e}")
+        print("Fail:", e)
     finally:
         if conn and conn.is_connected():
             cursor.close()
             conn.close()
+
 
 # ------------------ Function 8: Keyword Search ------------------
 def listBaseModelKeyWord(keyword):
