@@ -210,21 +210,24 @@ def insertAgentClient(uid, username, email, interests, cardholder, expire, cardn
         return False
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT uid FROM User WHERE uid=%s", (uid,))
-        if cursor.fetchone():
-            print("Fail")
-            return False
-
         cursor.execute("SELECT uid FROM AgentClient WHERE uid=%s", (uid,))
         if cursor.fetchone():
             print("Fail")
             return False
-        cursor.execute("INSERT INTO User (uid, email, username) VALUES (%s, %s, %s)", (uid, email, username))
-        cursor.execute("""
-            INSERT INTO AgentClient
-            (uid, interests, cardholder, expire, cardno, cvv, zip)
-            VALUES (%s,%s,%s,%s,%s,%s,%s)
-        """, (uid, interests, cardholder, expire, cardno, cvv, zip_code))
+
+        cursor.execute(
+            "INSERT INTO AgentClient (uid, interests, cardholder, expire, cardno, cvv, zip) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            (uid, interests, cardholder, expire, cardno, cvv, zip_code)
+        )
+
+        cursor.execute("SELECT uid FROM User WHERE uid=%s", (uid,))
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT INTO User (uid, email, username) VALUES (%s, %s, %s)",
+                (uid, email, username)
+            )
+
         conn.commit()
         print("Success")
         return True
