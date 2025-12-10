@@ -19,6 +19,7 @@ def get_db_connection():
         print(f"Error connecting to MySQL: {e}")
         return None
 
+#function 1: import data
 def import_data(folder_name):
     connection = get_db_connection()
     if not connection:
@@ -156,7 +157,7 @@ def import_data(folder_name):
             cursor.close()
             connection.close()
 
-
+# function 2: insert agent client
 def insertAgentClient(uid, username, email, card_number, card_holder, 
                       expiration_date, cvv, zip_code, interests):
     connection = get_db_connection()
@@ -191,7 +192,7 @@ def insertAgentClient(uid, username, email, card_number, card_holder,
             cursor.close()
             connection.close()
 
-
+#function 3: add a customized model
 def addCustomizedModel(mid, bmid):
     connection = get_db_connection()
     if not connection:
@@ -224,7 +225,7 @@ def addCustomizedModel(mid, bmid):
             cursor.close()
             connection.close()
 
-
+#function 4: delete a base model
 def deleteBaseModel(bmid):
     connection = get_db_connection()
     if not connection:
@@ -254,3 +255,148 @@ def deleteBaseModel(bmid):
             cursor.close()
             connection.close()
 
+
+
+# function 5: list internet service
+def listInternetService(bmid):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        if not conn:
+            print("Fail")
+            return
+        
+        cursor = conn.cursor()
+        
+        query = """
+        SELECT DISTINCT s.sid, s.endpoint, s.provider
+        FROM InternetService s
+        JOIN ModelServices ms ON s.sid = ms.sid
+        WHERE ms.bmid = %s
+        ORDER BY s.provider ASC
+        """
+        
+        cursor.execute(query, (bmid,))
+        results = cursor.fetchall()
+        
+        for row in results:
+            print(f"{row[0]},{row[1]},{row[2]}")
+        
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# function 6: count customized model
+def countCustomizedModel(*bmids):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        if not conn:
+            print("Fail")
+            return
+        
+        cursor = conn.cursor()
+        
+        bmid_list = list(bmids)
+        placeholders = ','.join(['%s'] * len(bmid_list))
+        
+        query = f"""
+        SELECT bm.bmid, bm.description, COUNT(cm.mid) as customizedModelCount
+        FROM BaseModel bm
+        LEFT JOIN CustomizedModel cm ON bm.bmid = cm.bmid
+        WHERE bm.bmid IN ({placeholders})
+        GROUP BY bm.bmid, bm.description
+        ORDER BY bm.bmid ASC
+        """
+        
+        cursor.execute(query, bmid_list)
+        results = cursor.fetchall()
+        
+        for row in results:
+            print(f"{row[0]},{row[1]},{row[2]}")
+        
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# function 7: find top-n longest duration configuration
+def topNDurationConfig(uid, N):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        if not conn:
+            print("Fail")
+            return
+        
+        cursor = conn.cursor()
+        
+        query = """
+        SELECT c.client_uid, c.cid, c.labels, c.content, mc.duration
+        FROM Configuration c
+        JOIN ModelConfigurations mc ON c.cid = mc.cid
+        WHERE c.client_uid = %s
+        ORDER BY mc.duration DESC
+        LIMIT %s
+        """
+        
+        cursor.execute(query, (uid, N))
+        results = cursor.fetchall()
+        
+        for row in results:
+            print(f"{row[0]},{row[1]},{row[2]},{row[3]},{row[4]}")
+        
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# function 8: keyword search
+def listBaseModelKeyWord(keyword):
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        if not conn:
+            print("Fail")
+            return
+        
+        cursor = conn.cursor()
+        
+        query = """
+        SELECT DISTINCT bm.bmid, s.sid, s.provider, l.domain
+        FROM BaseModel bm
+        JOIN ModelServices ms ON bm.bmid = ms.bmid
+        JOIN InternetService s ON ms.sid = s.sid
+        JOIN LLMService l ON s.sid = l.sid
+        WHERE l.domain LIKE %s
+        ORDER BY bm.bmid ASC
+        LIMIT 5
+        """
+        
+        cursor.execute(query, (f'%{keyword}%',))
+        results = cursor.fetchall()
+        
+        for row in results:
+            print(f"{row[0]},{row[1]},{row[2]},{row[3]}")
+        
+    except Exception as e:
+        print("Fail")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
