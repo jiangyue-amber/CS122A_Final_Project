@@ -205,7 +205,7 @@ def import_data(folder_name):
 
 
 # ------------------ Function 2: Insert AgentClient ------------------
-def insertAgentClient(uid, username, email, interests, cardholder, expire, cardno, cvv, zip_code):
+def insertAgentClient(uid, username, email, cardno, cardholder, expire, cvv, zip, interests):
     conn = get_db_connection()
     if not conn:
         return False
@@ -219,7 +219,7 @@ def insertAgentClient(uid, username, email, interests, cardholder, expire, cardn
         cursor.execute(
             "INSERT INTO AgentClient (uid, interests, cardholder, expire, cardno, cvv, zip) "
             "VALUES (%s,%s,%s,%s,%s,%s,%s)",
-            (uid, interests, cardholder, expire, cardno, cvv, zip_code)
+            (uid, interests, cardholder, expire, cardno, cvv, zip)
         )
 
         cursor.execute("SELECT uid FROM User WHERE uid=%s", (uid,))
