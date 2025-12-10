@@ -415,6 +415,7 @@ if __name__ == "__main__":
     if func_name not in func_map:
         print(f"Function '{func_name}' not found")
         sys.exit(1)
+
     # Parse numeric arguments
     def parse_arg(a):
         try: return int(a)
